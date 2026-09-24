@@ -1,0 +1,75 @@
+# user_ops_board 口径阈值配置（界面可在"口径与阈值"面板查看）
+# 所有阈值均可调整，修改后刷新生效（服务重启后缓存清理）。
+
+deposit:
+  # 足额划扣链路：以协议租期到期日 rent_expire_time 为到期基准
+  due_basis: rent_expire_time
+  warn_stages:            # T-N 预警分层（剩余天数 <= N）
+    T30: 30
+    T7: 7
+    T3: 3
+    T1: 1
+  overdue: true           # 已过到期日单独成"已逾期"层
+  # 划扣失败归因关键词（组合推导：支付流水 + 周期代扣签约 + 还电/扣款回执）
+  failure_rules:
+    - code: balance
+      name: 余额不足
+      keywords: ["余额不足", "INSUFFICIENT", "NOTPAY", "支付失败余额", "欠费", "BALANCE"]
+    - code: sign_lost
+      name: 代扣签约失效
+      keywords: ["解约", "UNSIGN", "签约失效", "用户解约", "系统解约", "未签约", "WAIT"]
+    - code: card_error
+      name: 卡状态异常
+      keywords: ["银行卡不可用", "该银行卡", "卡状态", "AE0120100104", "ACQ", "挂失", "冻结", "销户"]
+    - code: agreement_stop
+      name: 协议已停用
+      keywords: ["协议已停用", "协议状态：stop", "已停用", "cancelled", "unsubscribing"]
+    - code: other
+      name: 其他
+      keywords: []
+  # 建议可划扣最大金额评估（对划扣失败协议）
+  suggest_rule:
+    levels:
+      - name: 全额可划扣
+        max_ratio: 1.0
+        min_consume_90d_fee: 3000     # 近90天消费（分）>=3000 且无严重风险标签
+      - name: 部分可划扣
+        max_ratio: 0.6
+        min_consume_90d_fee: 1000
+      - name: 谨慎划扣
+        max_ratio: 0.3
+        min_consume_90d_fee: 0
+    risk_tag_keywords: ["逾期不还", "风险", "黑名单", "投诉"]
+
+silent_low_freq:
+  silent:
+    window_days: 90          # 沉默：近 90 天换电 0 次
+    require_status: ["working", "owe_rent", "paused"]   # 数据中"生效中"对应 status=working（需求文档写作 status=use）
+    require_overdue_rent: true                            # 要求已欠租：rent_expire_time 过期或 status=owe_rent
+  low_freq:                   # 低频 L1-L5（生效天数以 activation_time 起算）
+    L1: {min_days: 15, max_days: 30, max_count: 1}
+    L2: {min_days: 30, max_days: 45, max_count: 2}
+    L3: {min_days: 45, max_days: 60, max_count: 3}
+    L4: {min_days: 60, max_days: 99999, last60_max_count: 4}
+    L5: {new_user_days: 15, power_lt: 25, silent_days: 15}
+    new_user_exclude_days: 15
+  monthly_freq_days: 60       # 月均换电频次 = 近 60 天归还次数 / 2
+  abnormal_flow:              # 流通异常判定（仅"柜机上报的电池位置异常"，电池长时间离线/超范围属预警信号，不剔除）
+    battery_events: ["换电柜未识别电池", "电池疑似在换电柜中丢失"]
+    returned_flag: last_back_exchange_sn
+  action_queue:               # 动作队列
+    persuade_days: 60         # >2 个月不换电 -> 劝退
+    out_of_range_km: 5        # 距最近网点 > 5km 视为超范围
+    out_of_range_days: 3      # 连续超范围 > 3 天加大预警
+    need_battery: true        # 需持有电池线索才进队列
+
+strategy_value:
+  deposit_funnel: ["should", "success", "fail", "recover"]   # 应扣->成功->失败->挽回
+  reception_types: ["exchange_take_battery", "exchange_back_battery", "back_validate", "offline_verify",
+                    "artificial_confirm_back", "init_order", "take_first_after_back", "other"]
+  persuade_keywords: ["劝退", "退订", "解约", "退租", "退款"]
+  activate_keywords: ["引导", "激活", "换电", "续租", "充值", "回访", "唤醒"]
+
+export:
+  max_rows: 5000
+  user360_max_rows: 20000

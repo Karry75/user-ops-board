@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>用户经营看板 · 押金划扣 &amp; 沉默低频电池寻找</title>
+<style>
+  :root{--bg:#f5f7fb;--card:#fff;--line:#e3e8f0;--pri:#2f5597;--pri2:#4b7bec;--txt:#1f2937;--sub:#6b7280;
+        --warn:#e67e22;--danger:#d64545;--ok:#2e9e6b;--side:216px;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.55 "Microsoft YaHei",system-ui,sans-serif}
+  /* 左侧固定菜单 */
+  .side{position:fixed;left:0;top:0;bottom:0;width:var(--side);background:linear-gradient(180deg,#2f5597,#3b6ab5);
+        color:#fff;padding:16px 12px;display:flex;flex-direction:column;gap:12px;overflow:auto;z-index:40}
+  .side .brand{font-size:16px;font-weight:600;line-height:1.4;padding:2px 6px 10px;border-bottom:1px solid rgba(255,255,255,.22)}
+  .side .brand small{display:block;font-size:11.5px;font-weight:400;opacity:.85;margin-top:4px}
+  .side nav{display:flex;flex-direction:column;gap:6px}
+  .side .nav{display:flex;align-items:center;gap:9px;text-align:left;background:transparent;border:1px solid transparent;
+             color:#eaf1ff;border-radius:8px;padding:9px 10px;font:inherit;cursor:pointer;line-height:1.35}
+  .side .nav i{font-style:normal;font-size:12px;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.18);
+               display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px}
+  .side .nav:hover{background:rgba(255,255,255,.12)}
+  .side .nav.on{background:#fff;color:var(--pri);font-weight:600}
+  .side .nav.on i{background:var(--pri);color:#fff}
+  .side .sidenote{font-size:11.5px;opacity:.85;line-height:1.7;margin-top:auto;padding:8px 6px 2px;border-top:1px solid rgba(255,255,255,.22)}
+  .main{margin-left:var(--side);min-height:100vh}
+  header{background:linear-gradient(100deg,#2f5597,#4b7bec);color:#fff;padding:14px 20px}
+  header h1{margin:0;font-size:18px;font-weight:600}
+  header .sub{font-size:12px;opacity:.88;margin-top:4px}
+  .filterbar{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line);
+             padding:10px 20px;display:flex;gap:9px;flex-wrap:wrap;align-items:center;box-shadow:0 1px 4px rgba(31,41,55,.05)}
+  .filterbar .t{font-size:13px;font-weight:600;color:var(--pri);margin-right:2px}
+  .wrap{padding:14px 20px 40px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  .card h3{margin:0 0 10px;font-size:15px;color:var(--pri);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .card h3 small{color:var(--sub);font-weight:400;font-size:12px}
+  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  select,input,button{font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--txt)}
+  button{cursor:pointer}
+  button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+  button.ghost{background:#fff;color:var(--pri);border-color:#c7d3e8}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+  .kpi{background:#fbfcfe;border:1px solid var(--line);border-radius:9px;padding:10px 12px;cursor:pointer;transition:.12s}
+  .kpi:hover{border-color:#9fb6dd;box-shadow:0 2px 8px rgba(47,85,151,.12)}
+  .kpi.on{border-color:var(--pri);background:#f2f6fd;box-shadow:0 0 0 2px rgba(47,85,151,.18)}
+  .kpi .l{font-size:12px;color:var(--sub)}
+  .kpi .v{font-size:21px;font-weight:600;margin-top:2px}
+  .kpi .u{font-size:12px;color:var(--sub);margin-left:3px;font-weight:400}
+  .kpi .d{font-size:11.5px;color:#8a94a6;margin-top:4px}
+  .kpi.warn .v{color:var(--warn)} .kpi.danger .v{color:var(--danger)} .kpi.ok .v{color:var(--ok)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;white-space:nowrap}
+  th{background:#f7f9fc;color:var(--sub);font-weight:600;position:sticky;top:0;z-index:2}
+  .scroll{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+  .tag{display:inline-block;background:#eef3fb;color:var(--pri);border-radius:4px;padding:0 5px;margin-right:3px;font-size:12px}
+  .chip{display:inline-block;border-radius:12px;padding:2px 9px;font-size:12px}
+  .chip.red{background:#fdecec;color:var(--danger)} .chip.orange{background:#fdf3e6;color:var(--warn)}
+  .chip.green{background:#e9f7f0;color:var(--ok)} .chip.gray{background:#f0f2f6;color:var(--sub)}
+  .bar{height:9px;background:#eef1f6;border-radius:5px;overflow:hidden;min-width:80px}
+  .bar>i{display:block;height:100%;background:var(--pri2)}
+  .pager{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--sub)}
+  .note{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.7}
+  .flexrow{display:flex;gap:14px;flex-wrap:wrap}
+  .flexrow>*{flex:1 1 380px;min-width:320px}
+  .kv{font-size:12.5px;color:var(--sub);margin:3px 0}
+  code{background:#f3f5f9;padding:1px 5px;border-radius:4px;font-size:12px}
+  .hidden{display:none}
+  .drillbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 9px}
+  .drillbar .lb{font-size:12.5px;color:var(--pri);background:#eef3fb;border-radius:6px;padding:3px 9px}
+  .err{background:#fdecec;border:1px solid #f3c2c2;color:#a12a2a;border-radius:8px;padding:9px 12px;
+       font-size:13px;margin-bottom:12px;line-height:1.7}
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="brand">用户经营看板<small>独立服务 user_ops_board · 端口 8095</small></div>
+  <nav id="nav">
+    <button class="nav on" data-page="deposit"><i>一</i>押金板块</button>
+    <button class="nav" data-page="silent"><i>二</i>沉默低频 · 电池寻找</button>
+    <button class="nav" data-page="user360"><i>三</i>用户 360 明细</button>
+    <button class="nav" data-page="strategy"><i>四</i>策略价值条</button>
+  </nav>
+  <div class="sidenote">数据源：只读 AnalyticDB 双库<br>全部数据取自库内真实数据，无样本兜底</div>
+</aside>
+
+<div class="main">
+  <header>
+    <h1>用户经营看板 · 押金划扣 &amp; 沉默低频电池寻找</h1>
+    <div class="sub" id="dsInfo">只读 AnalyticDB 双库 · 加载中…</div>
+  </header>
+
+  <!-- 统一筛选器（置顶常驻） -->
+  <div class="filterbar">
+    <span class="t">统一筛选器</span>
+    <select id="fCity"><option value="">全部城市</option></select>
+    <select id="fProduct"><option value="">全部电池产品</option></select>
+    <select id="fOem"><option value="">全部 OEM</option></select>
+    <select id="fWarn">
+      <option value="">全部押金划扣预警时间</option>
+      <option value="T30">T-30（30 天内到期）</option>
+      <option value="T7">T-7（7 天内到期）</option>
+      <option value="T3">T-3（3 天内到期）</option>
+      <option value="T1">T-1（1 天内到期）</option>
+      <option value="overdue">已逾期</option>
+    </select>
+    <button class="pri" id="btnRefresh">刷新</button>
+    <button class="ghost" id="btnThresholds">口径与阈值</button>
+    <span class="kv" id="filterDesc"></span>
+  </div>
+
+  <div class="wrap">
+    <div id="errBar" class="err hidden"></div>
+
+    <!-- ============ 一、押金板块 ============ -->
+    <section id="page-deposit">
+      <div class="card">
+        <h3>押金划扣 KPI <small>点击任意卡片可下钻查看该口径明细</small></h3>
+        <div class="grid" id="depKpi"></div>
+        <div id="depFailChips" class="note"></div>
+        <div class="note" id="depBasis"></div>
+      </div>
+      <div class="card">
+        <h3>押金明细（下钻结果）
+          <span>
+            <button class="ghost" id="depExport">导出 Excel</button>
+            <button class="ghost" id="depReset">查看全部应划扣</button>
+          </span></h3>
+        <div class="drillbar">
+          <span class="lb" id="depDrillLabel">全部应划扣用户</span>
+          <input id="depKw" placeholder="姓名 / 手机号 / 用户ID / 协议ID" />
+          <button class="ghost" id="depSearch">查询</button>
+        </div>
+        <div class="scroll" style="max-height:560px"><table id="depTable"></table></div>
+        <div class="pager" id="depPager"></div>
+        <div class="note" id="depBasis2"></div>
+      </div>
+    </section>
+
+    <!-- ============ 二、沉默低频 · 电池寻找 ============ -->
+    <section id="page-silent" class="hidden">
+      <div class="card">
+        <h3>沉默低频 KPI <small>点击任意卡片可下钻查看该口径明细</small></h3>
+        <div class="grid" id="silKpi"></div>
+        <div id="silActionChips" class="note"></div>
+        <div class="note" id="silBasis"></div>
+      </div>
+      <div class="card">
+        <h3>线索与动作明细（下钻结果）
+          <span>
+            <button class="ghost" id="silExport">导出 Excel</button>
+            <button class="ghost" id="silReset">查看沉默用户线索</button>
+          </span></h3>
+        <div class="drillbar">
+          <span class="lb" id="silDrillLabel">沉默用户线索</span>
+          <select id="silLevel">
+            <option value="">全部层级</option>
+            <option value="silent">沉默</option>
+            <option value="L1">L1</option><option value="L2">L2</option><option value="L3">L3</option>
+            <option value="L4">L4</option><option value="L5">L5</option>
+          </select>
+          <input id="silKw" placeholder="姓名 / 手机号 / 电池SN / 用户ID" />
+          <button class="ghost" id="silSearch">查询</button>
+        </div>
+        <div class="scroll" style="max-height:560px"><table id="silTable"></table></div>
+        <div class="pager" id="silPager"></div>
+        <div class="note" id="silBasis2"></div>
+      </div>
+    </section>
+
+    <!-- ============ 三、用户 360 明细 ============ -->
+    <section id="page-user360" class="hidden">
+      <div class="card">
+        <h3>用户 360 KPI <small>点击任意卡片可下钻查看该口径明细（一行一份协议）</small></h3>
+        <div class="grid" id="u360Kpi"></div>
+        <div class="note" id="u360Basis"></div>
+      </div>
+      <div class="card">
+        <h3>用户 360 明细（下钻结果）
+          <span>
+            <button class="ghost" id="u360Export">导出 Excel</button>
+            <button class="ghost" id="u360Reset">查看全部生效中协议</button>
+          </span></h3>
+        <div class="drillbar">
+          <span class="lb" id="u360DrillLabel">全部生效中协议</span>
+          <select id="u360Advice">
+            <option value="">全部处置建议</option>
+            <option value="划扣">划扣</option><option value="回收">回收</option>
+            <option value="劝退">劝退</option><option value="激活">激活</option>
+            <option value="预警">预警</option><option value="正常">正常</option>
+          </select>
+          <input id="u360Kw" placeholder="姓名 / 手机号 / 电池SN / 用户ID / 协议ID" />
+          <button class="ghost" id="u360Search">查询</button>
+        </div>
+        <div class="scroll" style="max-height:580px"><table id="u360Table"></table></div>
+        <div class="pager" id="u360Pager"></div>
+        <div class="note" id="u360Basis2"></div>
+      </div>
+    </section>
+
+    <!-- ============ 四、策略价值条 ============ -->
+    <section id="page-strategy" class="hidden">
+      <div class="card">
+        <h3>押金链路价值：应划扣 → 成功 → 失败 → 挽回 <small>点击任意卡片可下钻查看该口径明细</small></h3>
+        <div class="grid" id="strKpi"></div>
+        <div class="note" id="strBasis"></div>
+      </div>
+      <div class="card">
+        <h3>客服接待成效 KPI <small>点击任意卡片可下钻查看接待记录明细</small></h3>
+        <div class="grid" id="strRecKpi"></div>
+        <div class="note" id="strReceptionBasis"></div>
+      </div>
+      <div class="card">
+        <h3>明细（下钻结果）
+          <span>
+            <button class="ghost" id="strExport">导出 Excel</button>
+            <button class="ghost" id="strReset">查看全部应划扣</button>
+          </span></h3>
+        <div class="drillbar">
+          <span class="lb" id="strDrillLabel">押金划扣漏斗 · 应划扣</span>
+          <input id="strKw" placeholder="姓名 / 手机号 / 用户ID / 协议ID" />
+          <button class="ghost" id="strSearch">查询</button>
+        </div>
+        <div class="scroll" style="max-height:560px"><table id="strTable"></table></div>
+        <div class="pager" id="strPager"></div>
+        <div class="note" id="strBasis2"></div>
+      </div>
+    </section>
+
+    <!-- 阈值面板 -->
+    <div class="card hidden" id="panelThresholds">
+      <h3>口径与阈值（可在 config/thresholds.yaml 调整）</h3>
+      <pre id="thBody" style="max-height:420px;overflow:auto;font-size:12px;background:#f7f9fc;padding:12px;border-radius:8px"></pre>
+    </div>
+  </div>
+</div>
+<script src="/static/app.js?v=20260924c"></script>
+</body>
+</html>
