@@ -1,0 +1,14 @@
+{
+ "/api/meta": "data/meta.json",
+ "/api/thresholds": "data/thresholds.json",
+ "/api/deposit/kpi": "data/deposit_kpi.json",
+ "/api/deposit/warn": "data/deposit_warn.json",
+ "/api/deposit/failure": "data/deposit_failure.json",
+ "/api/silent/kpi": "data/silent_kpi.json",
+ "/api/silent/leads": "data/silent_leads.json",
+ "/api/user360/kpi": "data/user360_kpi.json",
+ "/api/user360": "data/user360.json",
+ "/api/strategy/kpi": "data/strategy_kpi.json",
+ "/api/strategy": "data/strategy.json",
+ "/api/strategy/drill": "data/strategy_drill.json"
+}
