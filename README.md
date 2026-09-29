@@ -11,6 +11,19 @@ AIGC:
 
 # user_ops_board · 用户经营看板（押金划扣 & 沉默低频电池寻找）
 
+## 在线访问
+
+- 本站看板（在线）：https://karry75.github.io/user-ops-board/
+- 全部看板作品集（导航页）：https://karry75.github.io/dashboard-portal/
+
+## 技术速览
+
+- **形态**：单文件静态看板（HTML + JavaScript + ECharts），数据以离线快照形式随页面加载，纯前端渲染、无后端依赖。
+- **原理**：业务库（阿里云 AnalyticDB）→ Python 抽取/构建管线 → 脱敏聚合快照 → 静态页面；页面打开即渲染，支持按维度筛选与下钻。
+- **用途**：用户经营看板：押金划扣预警与沉默低频电池寻找。
+- **脱敏**：公开发布版本已移除数据库连接信息、账号口令与个人敏感字段，仅保留聚合指标。
+
+
 独立 Flask 看板工程，只读复用 AnalyticDB 双库（业务库 `sharing-citybike-pro` + 基础库 `sharing-system-base-pro`），
 **不修改** `board` / `electric` 目录，**不使用** 8092 / 8093 端口。
 
